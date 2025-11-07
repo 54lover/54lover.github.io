@@ -3,270 +3,141 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Pong vs IA — barre gauche = souris</title>
+  <title>Pong — vs IA (Difficile)</title>
   <style>
-    :root{--bg:#0e1116;--panel:#0b1220;--accent:#6ee7b7;--muted:#98a1b3}
-    html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
-    body{display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#071226 0%, #0e1116 100%);color:#fff}
-    .wrap{width:min(960px,95vw);aspect-ratio:16/9;background:var(--panel);border-radius:14px;box-shadow:0 10px 40px rgba(2,6,23,0.7);padding:14px;display:flex;flex-direction:column;gap:10px}
-    header{display:flex;align-items:center;justify-content:space-between}
-    h1{font-size:18px;margin:0;color:var(--accent)}
-    .controls{display:flex;gap:8px;align-items:center}
-    button{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px 10px;border-radius:8px;cursor:pointer}
-    button:hover{border-color:rgba(255,255,255,0.12)}
-    label{color:var(--muted);font-size:13px}
-    #gameCanvas{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:8px;display:block;width:100%;height:100%}
-    footer{display:flex;justify-content:space-between;color:var(--muted);font-size:13px}
-    .score{font-size:20px;color:#fff}
-    .hint{font-size:12px;color:var(--muted)}
+    html,body{height:100%;margin:0;background:#071225}
+    body{display:flex;align-items:center;justify-content:center}
+    canvas{width:90vw;height:90vh;max-width:1200px;max-height:675px;display:block;border-radius:6px;background:#071225}
+    /* désactiver sélection */
+    *{user-select:none;-webkit-user-select:none}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>Pong — vs IA</h1>
-      <div class="controls">
-        <label for="difficulty">Difficulté</label>
-        <select id="difficulty">
-          <option value="0.9">Facile</option>
-          <option value="0.75" selected>Normal</option>
-          <option value="0.55">Difficile</option>
-        </select>
-        <button id="restart">Redémarrer</button>
-      </div>
-    </header>
-
-    <div style="flex:1;display:flex;">
-      <canvas id="gameCanvas"></canvas>
-    </div>
-
-    <footer>
-      <div class="score"><span id="playerScore">0</span> — <span id="aiScore">0</span></div>
-      <div class="hint">Dirigez la barre de gauche avec la hauteur de la souris. Cliquez pour lancer la balle.</div>
-    </footer>
-  </div>
+  <canvas id="c"></canvas>
 
 <script>
 (() => {
-  const canvas = document.getElementById('gameCanvas');
+  const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
+  const VIRTUAL_W = 800, VIRTUAL_H = 450;
 
-  // taille logique du jeu (virtual resolution), mise à l'échelle automatiquement
-  const VIRTUAL_W = 800;
-  const VIRTUAL_H = 450;
-
-  // mise à l'échelle responsive
-  function resize() {
+  function fit(){
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * devicePixelRatio;
     canvas.height = rect.height * devicePixelRatio;
     ctx.setTransform(devicePixelRatio * (VIRTUAL_W / rect.width), 0, 0, devicePixelRatio * (VIRTUAL_H / rect.height), 0, 0);
   }
+  window.addEventListener('resize', fit);
+  fit();
 
-  // crée un canvas responsive (16:9)
-  function setupCanvasSize() {
-    const parent = canvas.parentElement;
-    // la hauteur prendra toute la zone disponible du parent
-    const width = parent.clientWidth;
-    const height = parent.clientHeight;
-    canvas.style.width = width + 'px';
-    canvas.style.height = height + 'px';
-    resize();
-  }
-
-  window.addEventListener('resize', () => { setupCanvasSize(); });
-  setupCanvasSize();
-
-  // objets de jeu
-  const paddleWidth = 12;
-  const paddleHeight = 90;
-  const ballRadius = 7;
-
+  const paddleW = 12, paddleH = 90, ballR = 7;
   const state = {
-    player: { x: 30, y: VIRTUAL_H/2 - paddleHeight/2 },
-    ai:     { x: VIRTUAL_W - 30 - paddleWidth, y: VIRTUAL_H/2 - paddleHeight/2 },
-    ball:   { x: VIRTUAL_W/2, y: VIRTUAL_H/2, vx: 250 * (Math.random() > 0.5 ? 1 : -1), vy: 140 * (Math.random() > 0.5 ? 1 : -1) },
-    playerScore: 0,
-    aiScore: 0,
-    running: false,
-    lastTime: null,
+    player:{x:30,y:VIRTUAL_H/2 - paddleH/2},
+    ai:{x:VIRTUAL_W - 30 - paddleW,y:VIRTUAL_H/2 - paddleH/2},
+    ball:{x:VIRTUAL_W/2,y:VIRTUAL_H/2,vx:240*(Math.random()>0.5?1:-1),vy:140*(Math.random()>0.5?1:-1)},
+    playerScore:0,aiScore:0,running:true,lastTime:null
   };
 
-  const playerScoreEl = document.getElementById('playerScore');
-  const aiScoreEl = document.getElementById('aiScore');
-  const difficultySelect = document.getElementById('difficulty');
+  // DIFFICULTÉ: difficile (IA très réactive)
+  const DIFFICULTY = 0.55; // plus petit => IA plus réactive in updateAI
 
-  // control: suivre la souris verticalement
+  // souris/tactile
   let mouseY = VIRTUAL_H/2;
-  function getPointerPos(evt) {
+  function pointerY(e){
     const rect = canvas.getBoundingClientRect();
-    const clientY = evt.clientY !== undefined ? evt.clientY : (evt.touches ? evt.touches[0].clientY : 0);
-    const y = (clientY - rect.top) * (VIRTUAL_H / rect.height);
-    return y;
+    const clientY = e.clientY !== undefined ? e.clientY : (e.touches ? e.touches[0].clientY : 0);
+    return (clientY - rect.top) * (VIRTUAL_H / rect.height);
   }
+  canvas.addEventListener('mousemove', e=>{ mouseY = pointerY(e); });
+  canvas.addEventListener('touchmove', e=>{ e.preventDefault(); mouseY = pointerY(e); }, {passive:false});
 
-  canvas.addEventListener('mousemove', e => {
-    mouseY = getPointerPos(e);
-  });
-  // touch support (dragging finger)
-  canvas.addEventListener('touchmove', e => { e.preventDefault(); mouseY = getPointerPos(e); }, {passive:false});
+  // clic pour relancer la balle si arrêt
+  canvas.addEventListener('click', ()=>{ if(!state.running) spawnBall(Math.random()>0.5); state.running = true; });
 
-  // clic pour lancer / mettre pause
-  canvas.addEventListener('click', () => { state.running = true; });
-
-  document.getElementById('restart').addEventListener('click', reset);
-
-  function reset() {
-    state.playerScore = 0; state.aiScore = 0; updateScore();
-    spawnBall(true);
-    state.running = false;
-  }
-
-  function spawnBall(toRight = Math.random() > 0.5) {
+  function spawnBall(toRight=true){
     state.ball.x = VIRTUAL_W/2; state.ball.y = VIRTUAL_H/2;
-    const speed = 240;
-    const angle = (Math.random() * 0.6 - 0.3); // small vertical component
-    state.ball.vx = (toRight ? 1 : -1) * speed;
-    state.ball.vy = speed * angle;
+    const speed = 260; const angle = (Math.random()*0.6-0.3);
+    state.ball.vx = (toRight?1:-1)*speed; state.ball.vy = speed*angle;
   }
 
-  function updateScore(){ playerScoreEl.textContent = state.playerScore; aiScoreEl.textContent = state.aiScore; }
-
-  // IA comportement simple: suit la balle avec limitation de vitesse, modulé par "difficulty"
-  function updateAI(dt) {
-    const difficulty = parseFloat(difficultySelect.value); // 0..1, plus bas = plus rapide
-    const targetY = state.ball.y - paddleHeight/2;
-    // vitesse maximale de l'IA dépend de difficulty (plus petit => plus réactif). clamp
-    const maxSpeed = 300 * (1.2 - difficulty); // difficulty 0.75 -> ~90
-    const dy = targetY - state.ai.y;
-    if (Math.abs(dy) > 2) {
-      const move = Math.sign(dy) * Math.min(Math.abs(dy), maxSpeed * dt);
-      state.ai.y += move;
-      // clamp
-      state.ai.y = Math.max(0, Math.min(VIRTUAL_H - paddleHeight, state.ai.y));
-    }
+  function updateAI(dt){
+    // IA difficile: très rapide mais toujours imparfaite
+    const target = state.ball.y - paddleH/2;
+    const maxSpeed = 320 * (1.2 - DIFFICULTY); // DIFFICULTY=0.55 -> grande vitesse
+    const dy = target - state.ai.y;
+    if(Math.abs(dy) > 1){ state.ai.y += Math.sign(dy) * Math.min(Math.abs(dy), maxSpeed*dt); }
+    state.ai.y = Math.max(0,Math.min(VIRTUAL_H - paddleH, state.ai.y));
   }
 
-  function step(dt) {
-    if (!state.running) return;
-
-    // player paddle follows mouse with small smoothing
-    const targetPlayerY = mouseY - paddleHeight/2;
-    state.player.y += (targetPlayerY - state.player.y) * Math.min(1, 15 * dt);
-    state.player.y = Math.max(0, Math.min(VIRTUAL_H - paddleHeight, state.player.y));
+  function step(dt){
+    if(!state.running) return;
+    // joueur suit la souris (lissage léger)
+    const targetPlayer = mouseY - paddleH/2;
+    state.player.y += (targetPlayer - state.player.y) * Math.min(1, 18 * dt);
+    state.player.y = Math.max(0, Math.min(VIRTUAL_H - paddleH, state.player.y));
 
     updateAI(dt);
 
-    // ball movement
     state.ball.x += state.ball.vx * dt;
     state.ball.y += state.ball.vy * dt;
 
-    // top/bottom collision
-    if (state.ball.y - ballRadius < 0) { state.ball.y = ballRadius; state.ball.vy *= -1; }
-    if (state.ball.y + ballRadius > VIRTUAL_H) { state.ball.y = VIRTUAL_H - ballRadius; state.ball.vy *= -1; }
+    // rebonds haut/bas
+    if(state.ball.y - ballR < 0){ state.ball.y = ballR; state.ball.vy *= -1; }
+    if(state.ball.y + ballR > VIRTUAL_H){ state.ball.y = VIRTUAL_H - ballR; state.ball.vy *= -1; }
 
-    // paddle collisions
-    // player
-    if (state.ball.x - ballRadius < state.player.x + paddleWidth) {
-      if (state.ball.y > state.player.y && state.ball.y < state.player.y + paddleHeight) {
-        state.ball.x = state.player.x + paddleWidth + ballRadius;
-        const impact = (state.ball.y - (state.player.y + paddleHeight/2)) / (paddleHeight/2);
-        const speed = Math.hypot(state.ball.vx, state.ball.vy) * 1.05; // slight speedup
-        const angle = impact * 0.8; // deflection
-        const dir = 1; // to right
-        state.ball.vx = dir * Math.max(160, speed * Math.cos(angle));
+    // collision joueur
+    if(state.ball.x - ballR < state.player.x + paddleW){
+      if(state.ball.y > state.player.y && state.ball.y < state.player.y + paddleH){
+        state.ball.x = state.player.x + paddleW + ballR;
+        const impact = (state.ball.y - (state.player.y + paddleH/2)) / (paddleH/2);
+        const speed = Math.hypot(state.ball.vx, state.ball.vy) * 1.06;
+        const angle = impact * 0.9;
+        state.ball.vx = Math.abs(speed * Math.cos(angle));
         state.ball.vy = speed * Math.sin(angle);
-      } else if (state.ball.x < 0) {
-        // AI scores
-        state.aiScore += 1; updateScore(); spawnBall(true); state.running = false;
-      }
+      } else if(state.ball.x < 0){ state.aiScore++; spawnBall(true); state.running = false; }
     }
 
-    // AI paddle
-    if (state.ball.x + ballRadius > state.ai.x) {
-      if (state.ball.y > state.ai.y && state.ball.y < state.ai.y + paddleHeight) {
-        state.ball.x = state.ai.x - ballRadius;
-        const impact = (state.ball.y - (state.ai.y + paddleHeight/2)) / (paddleHeight/2);
-        const speed = Math.hypot(state.ball.vx, state.ball.vy) * 1.05;
-        const angle = impact * 0.8;
-        const dir = -1; // to left
-        state.ball.vx = dir * Math.max(160, speed * Math.cos(angle));
+    // collision IA
+    if(state.ball.x + ballR > state.ai.x){
+      if(state.ball.y > state.ai.y && state.ball.y < state.ai.y + paddleH){
+        state.ball.x = state.ai.x - ballR;
+        const impact = (state.ball.y - (state.ai.y + paddleH/2)) / (paddleH/2);
+        const speed = Math.hypot(state.ball.vx, state.ball.vy) * 1.06;
+        const angle = impact * 0.9;
+        state.ball.vx = -Math.abs(speed * Math.cos(angle));
         state.ball.vy = speed * Math.sin(angle);
-      } else if (state.ball.x > VIRTUAL_W) {
-        // Player scores
-        state.playerScore += 1; updateScore(); spawnBall(false); state.running = false;
-      }
+      } else if(state.ball.x > VIRTUAL_W){ state.playerScore++; spawnBall(false); state.running = false; }
     }
   }
 
-  function drawNet() {
-    ctx.save();
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    const gap = 14; const w = 4;
-    for (let y = 10; y < VIRTUAL_H; y += gap) {
-      ctx.fillRect(VIRTUAL_W/2 - w/2, y, w, gap/2);
-    }
-    ctx.restore();
-  }
-
-  function render() {
-    // background
+  function draw(){
     ctx.clearRect(0,0,VIRTUAL_W,VIRTUAL_H);
+    ctx.fillStyle = '#071225'; ctx.fillRect(0,0,VIRTUAL_W,VIRTUAL_H);
 
-    // dark playfield
-    ctx.fillStyle = '#071225';
-    ctx.fillRect(0,0,VIRTUAL_W,VIRTUAL_H);
-
-    drawNet();
+    // filet
+    ctx.fillStyle = 'rgba(255,255,255,0.06)'; const gap=14, w=4;
+    for(let y=10;y<VIRTUAL_H;y+=gap) ctx.fillRect(VIRTUAL_W/2 - w/2, y, w, gap/2);
 
     // paddles
-    ctx.fillStyle = '#ffffff';
-    roundRect(ctx, state.player.x, state.player.y, paddleWidth, paddleHeight, 6, true, false);
-    roundRect(ctx, state.ai.x, state.ai.y, paddleWidth, paddleHeight, 6, true, false);
+    ctx.fillStyle = '#fff'; roundRect(state.player.x, state.player.y, paddleW, paddleH, 6);
+    roundRect(state.ai.x, state.ai.y, paddleW, paddleH, 6);
 
-    // ball
-    ctx.beginPath(); ctx.arc(state.ball.x, state.ball.y, ballRadius, 0, Math.PI*2); ctx.fill();
+    // balle
+    ctx.beginPath(); ctx.arc(state.ball.x, state.ball.y, ballR, 0, Math.PI*2); ctx.fill();
 
     // scores
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.font = '22px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText(state.playerScore, VIRTUAL_W/2 - 40, 40);
-    ctx.fillText(state.aiScore, VIRTUAL_W/2 + 40, 40);
-
-    // hint overlay when paused
-    if (!state.running) {
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.fillRect(0, VIRTUAL_H - 60, VIRTUAL_W, 60);
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.font = '16px system-ui'; ctx.textAlign = 'left';
-      ctx.fillText("Cliquez dans l'aire pour lancer la balle. Glissez la souris pour déplacer la barre gauche.", 16, VIRTUAL_H - 28);
-    }
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = '20px system-ui'; ctx.textAlign='center';
+    ctx.fillText(state.playerScore, VIRTUAL_W/2 - 40, 36); ctx.fillText(state.aiScore, VIRTUAL_W/2 + 40, 36);
   }
 
-  function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-    ctx.fill();
-  }
+  function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); ctx.fill(); }
 
-  // main loop
-  function loop(ts) {
-    if (!state.lastTime) state.lastTime = ts;
-    const dt = Math.min(1/30, (ts - state.lastTime) / 1000); // clamp dt
-    step(dt);
-    render();
-    state.lastTime = ts;
-    requestAnimationFrame(loop);
-  }
+  function loop(ts){ if(!state.lastTime) state.lastTime = ts; const dt = Math.min(1/30, (ts - state.lastTime)/1000); step(dt); draw(); state.lastTime = ts; requestAnimationFrame(loop); }
 
-  // initial
-  spawnBall(); updateScore(); requestAnimationFrame(loop);
-
+  // démarrage automatique
+  spawnBall(Math.random()>0.5);
+  state.running = true;
+  requestAnimationFrame(loop);
 })();
 </script>
 </body>
