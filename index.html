@@ -29,10 +29,13 @@
   window.addEventListener('resize', fit);
   fit();
 
-  const paddleW = 12, paddleH = 90, ballR = 7;
+  const paddleW = 12, paddleH = 90, ballR = 18;
   let fieldW = window.innerWidth, fieldH = window.innerHeight;
 
-  const state = {
+  const ballImg = new Image();
+ballImg.src = 'zazu.png';
+
+const state = {
     player:{x:30,y:fieldH/2 - paddleH/2},
     ai:{x:fieldW - 30 - paddleW,y:fieldH/2 - paddleH/2},
     ball:{x:fieldW/2,y:fieldH/2,vx:400*(Math.random()>0.5?1:-1),vy:300*(Math.random()>0.5?1:-1)},
@@ -118,7 +121,7 @@
     fillRoundRect(state.ai.x, state.ai.y, paddleW, paddleH, 6);
 
     ctx.beginPath();
-    ctx.arc(state.ball.x, state.ball.y, ballR, 0, Math.PI*2);
+    if(ballImg.complete){ ctx.drawImage(ballImg, state.ball.x - ballR, state.ball.y - ballR, ballR*2, ballR*2); } else { ctx.arc(state.ball.x, state.ball.y, ballR, 0, Math.PI*2); }
     ctx.fill();
 
     ctx.font = '40px Arial';
