@@ -78,11 +78,11 @@ const state = {
   function step(dt){
     // update particles
     for(let i=particles.length-1;i>=0;i--){
-      const p = particles[i];
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.life -= dt;
-      if(p.life <= 0) particles.splice(i,1);
+      const part = particles[i];
+      part.x += part.vx * dt;
+      part.y += part.vy * dt;
+      part.life -= dt;
+      if(part.life <= 0) particles.splice(i,1);(i,1);
     }
 
     
@@ -119,10 +119,10 @@ const state = {
         vx: (Math.random()*200-100),
         vy: (Math.random()*200-100),
         life: 0.4
-        });
-      }
-    const p = playerSide ? state.player : state.ai;(playerSide)
-    const p = playerSide ? state.player : state.ai;
+      });
+    }
+    const paddleObj = playerSide ? state.player : state.ai;(playerSide)
+    const paddleObj = playerSide ? state.player : state.ai;
     const impact = (state.ball.y - (p.y + paddleH/2)) / (paddleH/2);
     const speed = Math.hypot(state.ball.vx, state.ball.vy) * 1.05;
     const angle = impact * 0.7;
@@ -191,4 +191,3 @@ const state = {
 </script>
 </body>
 </html>
-
