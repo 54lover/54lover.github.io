@@ -22,7 +22,7 @@
   const VIRTUAL_W = 800, VIRTUAL_H = 450;
 
   function fit(){
-    const rect = canvas.getBoundingClientRect();
+    const rect = {width: window.innerWidth, height: window.innerHeight};
     canvas.width = rect.width * devicePixelRatio;
     canvas.height = rect.height * devicePixelRatio;
     ctx.setTransform(devicePixelRatio * (VIRTUAL_W / rect.width), 0, 0, devicePixelRatio * (VIRTUAL_H / rect.height), 0, 0);
