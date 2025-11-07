@@ -119,8 +119,8 @@ const state = {
         vx: (Math.random()*200-100),
         vy: (Math.random()*200-100),
         life: 0.4
-      });
-    }
+        });
+      }
     const p = playerSide ? state.player : state.ai;(playerSide){
     const p = playerSide ? state.player : state.ai;
     const impact = (state.ball.y - (p.y + paddleH/2)) / (paddleH/2);
