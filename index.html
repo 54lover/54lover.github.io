@@ -173,9 +173,9 @@ function render(){
         let mainOut="",ghostOut="",ghostOut2="";
         for(let c of typedChars){
             const glitched = chaos(c);
-            mainOut += `<span style="display:inline-block; transform:translate(${rand(2)}px,${rand(2)}px) skew(${rand(5)}deg); opacity:${0.2+Math.random()*0.7};">${glitched}</span>`;
-            ghostOut += `<span style="display:inline-block; transform:translate(${rand(10)}px,${rand(5)}px) skew(${rand(10)}deg); opacity:${0.05+Math.random()*0.6};">${glitched}</span>`;
-            ghostOut2 += `<span style="display:inline-block; transform:translate(${rand(5)}px,${rand(10)}px) scale(${1+Math.random()*0.3}); opacity:${0.05+Math.random()*0.6};">${glitched}</span>`;
+            mainOut += `<span style="display:inline-block; transform:translate(${rand(2)}px,${rand(2)}px) skew(${rand(5)}deg); opacity:${0.2+Math.random()*1};">${glitched}</span>`;
+            ghostOut += `<span style="display:inline-block; transform:translate(${rand(10)}px,${rand(5)}px) skew(${rand(10)}deg); opacity:${0.05+Math.random()*1};">${glitched}</span>`;
+            ghostOut2 += `<span style="display:inline-block; transform:translate(${rand(5)}px,${rand(10)}px) scale(${1+Math.random()*0.3}); opacity:${0.05+Math.random()*1};">${glitched}</span>`;
         }
         main.innerHTML=mainOut;
         ghost1.innerHTML=ghostOut;
@@ -199,6 +199,7 @@ setInterval(showNewPhrase, 1000 + Math.random()*500);
 </script>
 </body>
 </html>
+
 
 
 
