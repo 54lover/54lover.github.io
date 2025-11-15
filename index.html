@@ -1,197 +1,185 @@
-<!doctype html>
-<html lang="fr">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Shoot the Image + Glitch Text</title>
-  <style>
-    html,body{height:100%;margin:0}
-    body{overflow:hidden;background:#000;font-family:monospace;}
-    canvas{position:fixed;top:0;left:0;width:100vw;height:100vh;border:none;display:block;}
-    *{user-select:none;-webkit-user-select:none;}
-    .fracture-container {
-      position:absolute;font-size:2rem;white-space:pre;pointer-events:none;z-index:2;
-    }
-    .layer {
-      position:absolute;top:0;left:0;pointer-events:none;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Glitch Shooting</title>
+<style>
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    cursor: crosshair;
+    background: #000 url('bg.png') no-repeat center center/cover;
+    font-family: monospace;
+}
+
+#gameArea {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.blood {
+    position: absolute;
+    width: 200px; /* Increased size */
+    height: 200px;
+    background: url('blood.png') no-repeat center center/contain;
+    pointer-events: none;
+    /* No animation, stays forever */
+}
+
+/* Glitch text styles */
+.fracture-container {
+    position: absolute;
+    font-size: 2rem;
+    white-space: pre;
+    pointer-events: none;
+}
+.layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+</style>
 </head>
 <body>
-<canvas id="c"></canvas>
-
-<div id="container" class="fracture-container">
-  <div id="main" class="layer" style="color:white;"></div>
-  <div id="ghost1" class="layer" style="color:rgba(255,0,80,0.4);"></div>
-  <div id="ghost2" class="layer" style="color:rgba(0,180,255,0.35);"></div>
+<div id="gameArea">
+    <div id="container" class="fracture-container">
+        <div id="main" class="layer" style="color:white;"></div>
+        <div id="ghost1" class="layer" style="color:rgba(255,0,80,0.4);"></div>
+        <div id="ghost2" class="layer" style="color:rgba(0,180,255,0.35);"></div>
+    </div>
 </div>
 
+<audio id="gunshot" src="gunshot.mp3"></audio>
+<audio id="bgm" src="MeetTheZazu.mp3" loop></audio>
+<script src="Phrase.js"></script> <!-- Your phrases array -->
+
 <script>
-/* --- Canvas Setup --- */
-const canvas=document.getElementById('c');
-const ctx=canvas.getContext('2d');
-let fieldW=window.innerWidth, fieldH=window.innerHeight;
+const gameArea = document.getElementById('gameArea');
+const gunshot = document.getElementById('gunshot');
+const bgm = document.getElementById("bgm");
 
-function fit(){
-    canvas.width=window.innerWidth*devicePixelRatio;
-    canvas.height=window.innerHeight*devicePixelRatio;
-    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
-    fieldW=window.innerWidth;
-    fieldH=window.innerHeight;
+  // Autoplay sera bloqué tant que l'utilisateur n'a pas interagi
+function startMusic() {
+  bgm.volume = 0.5; // volume confortable
+  bgm.play().catch(()=>{});
+  window.removeEventListener('click', startMusic);
+  window.removeEventListener('touchstart', startMusic);
 }
-window.addEventListener('resize',fit);
-fit();
 
-/* --- Game Assets --- */
-const ballImg=new Image();
-ballImg.src='zazu.png';
+  // Premier clic → on lance la musique
+window.addEventListener('click', startMusic);
+window.addEventListener('touchstart', startMusic);
 
-/* --- Game State --- */
-const state = {
-    playerY: fieldH/2,
-    projectiles: [],
-    target: null,
-    score:0
-};
+// Define the target rectangle as percentages of the background image
+// x, y = top-left corner, width, height
+const targetRectPercent = { x: 0.2, y: 0.2, width: 0.5, height: 0.7 }; // 40% from left, 20% from top, 50% width, 50% height
 
-/* --- Input --- */
-window.addEventListener('mousemove',e=>{
-    state.playerY=e.clientY;
-});
-window.addEventListener('click',()=>{
-    // Shoot projectile
-    state.projectiles.push({x:50, y:state.playerY, vx:700, vy:0, radius:8});
-});
+gameArea.addEventListener('click', (e) => {
+    const rect = gameArea.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-/* --- Spawn Target --- */
-function spawnTarget(){
-    const fromLeft=Math.random()<0.5;
-    const y=Math.random()*(fieldH-100)+50;
-    const speed=200+Math.random()*200;
-    state.target={
-        x: fromLeft ? -50 : fieldW+50,
-        y:y,
-        vx: fromLeft ? speed : -speed,
-        radius:25
+    // Calculate rectangle in pixels based on current gameArea size
+    const targetRectPx = {
+        x: targetRectPercent.x * rect.width,
+        y: targetRectPercent.y * rect.height,
+        width: targetRectPercent.width * rect.width,
+        height: targetRectPercent.height * rect.height
     };
-}
-spawnTarget();
 
-/* --- Game Loop --- */
-function step(dt){
-    // Move target
-    if(state.target){
-        state.target.x += state.target.vx * dt;
-        if(state.target.x<-100 || state.target.x>fieldW+100) spawnTarget();
+    if (x >= targetRectPx.x && x <= targetRectPx.x + targetRectPx.width &&
+        y >= targetRectPx.y && y <= targetRectPx.y + targetRectPx.height) {
+
+        gunshot.currentTime = 0;
+        gunshot.volume = 0.1;
+        gunshot.play();
+
+        const blood = document.createElement('div');
+        blood.className = 'blood';
+        blood.style.left = (x - 50) + 'px'; // center
+        blood.style.top = (y - 50) + 'px';
+        gameArea.appendChild(blood);
     }
+});
 
-    // Move projectiles
-    for(let i=state.projectiles.length-1;i>=0;i--){
-        const p=state.projectiles[i];
-        p.x+=p.vx*dt;
-        p.y+=p.vy*dt;
+// --- Glitch text logic ---
+const container = document.getElementById("container");
+const main = document.getElementById("main");
+const ghost1 = document.getElementById("ghost1");
+const ghost2 = document.getElementById("ghost2");
 
-        // Check collision with target
-        if(state.target){
-            const dx=p.x-state.target.x;
-            const dy=p.y-state.target.y;
-            const dist=Math.sqrt(dx*dx+dy*dy);
-            if(dist<state.target.radius+8){
-                state.score++;
-                state.projectiles.splice(i,1);
-                spawnTarget();
-                continue;
-            }
+let currentPhrase = "";
+let typedChars = [];
+
+function getRandomPhrase() {
+    let phrase;
+    do {
+        phrase = phrases[Math.floor(Math.random() * phrases.length)];
+    } while (phrase === currentPhrase && phrases.length > 1);
+    currentPhrase = phrase;
+    return phrase;
+}
+
+function rand(n){return Math.random()*n - n/2;}
+function chaos(c) {
+    if(c===" ") return " ";
+    if(Math.random()<0.1){
+        const pool = "!@#$%^&*()<>?/\\[]{}+=-_~";
+        c = pool[Math.floor(Math.random()*pool.length)];
+    }
+    return c;
+}
+
+function randomPosition() {
+    const containerWidth = container.offsetWidth;
+    const containerHeight = container.offsetHeight;
+    const maxX = window.innerWidth - containerWidth - 50;
+    const x = Math.random() * Math.max(0, maxX);
+    const maxY = window.innerHeight - containerHeight;
+    const y = Math.random() * Math.max(0, maxY);
+    container.style.left = `${x}px`;
+    container.style.top = `${y}px`;
+}
+
+function typePhrase(chars, index=0){
+    if(index<chars.length){
+        typedChars.push(chars[index]);
+        setTimeout(()=>typePhrase(chars,index+1),10 + Math.random()*10);
+    }
+}
+
+function render(){
+    if(typedChars.length>0){
+        let mainOut="",ghostOut="",ghostOut2="";
+        for(let c of typedChars){
+            const glitched = chaos(c);
+            mainOut += `<span style="display:inline-block; transform:translate(${rand(2)}px,${rand(2)}px) skew(${rand(5)}deg); opacity:${0.2+Math.random()*0.7};">${glitched}</span>`;
+            ghostOut += `<span style="display:inline-block; transform:translate(${rand(10)}px,${rand(5)}px) skew(${rand(10)}deg); opacity:${0.05+Math.random()*0.6};">${glitched}</span>`;
+            ghostOut2 += `<span style="display:inline-block; transform:translate(${rand(5)}px,${rand(10)}px) scale(${1+Math.random()*0.3}); opacity:${0.05+Math.random()*0.6};">${glitched}</span>`;
         }
-
-        // Remove offscreen projectiles
-        if(p.x>fieldW) state.projectiles.splice(i,1);
+        main.innerHTML=mainOut;
+        ghost1.innerHTML=ghostOut;
+        ghost2.innerHTML=ghostOut2;
+        container.style.transform = `translate(${rand(5)}px,${rand(5)}px) rotate(${rand(1)}deg)`;
     }
+    requestAnimationFrame(render);
 }
 
-function draw(){
-    ctx.fillStyle='#000';
-    ctx.fillRect(0,0,fieldW,fieldH);
-
-    // Draw player (simple gun)
-    ctx.fillStyle='#0f0';
-    ctx.fillRect(40,state.playerY-20,20,40);
-
-    // Draw target
-    if(state.target){
-        if(ballImg.complete)
-            ctx.drawImage(ballImg,state.target.x-state.target.radius,state.target.y-state.target.radius,state.target.radius*2,state.target.radius*2);
-        else{
-            ctx.fillStyle='red';
-            ctx.beginPath();
-            ctx.arc(state.target.x,state.target.y,state.target.radius,0,Math.PI*2);
-            ctx.fill();
-        }
-    }
-
-    // Draw projectiles
-    ctx.fillStyle='yellow';
-    for(const p of state.projectiles){
-        ctx.beginPath();
-        ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);
-        ctx.fill();
-    }
-
-    // Draw score
-    ctx.fillStyle='#fff';
-    ctx.font='40px Arial';
-    ctx.fillText('Score: '+state.score, fieldW-150, 50);
+function showNewPhrase(){
+    typedChars = [];
+    const phrase = getRandomPhrase();
+    const chars = phrase.split("");
+    randomPosition();
+    typePhrase(chars);
 }
 
-let lastTime=null;
-function loop(ts){
-    if(!lastTime) lastTime=ts;
-    const dt=Math.min(1/30,(ts-lastTime)/1000);
-    step(dt);
-    draw();
-    lastTime=ts;
-    requestAnimationFrame(loop);
-}
-requestAnimationFrame(loop);
-
-/* --- Glitch Text --- */
-const phrases=["
-
-    "Fais gaffe à tes meufs.",
-
-    "7 Rue des Lions ,77400 Lagny-sur-Marne.",
-
-    "Ton heure arrive, regarde bien la date.",
-    
-    "ip_adress : b51f:d68e:5b2b:b8d5:e4f9:7c07:06ad:5953",
-        
-    "90.121.23.167",
-
-    "Tu crois être une bonne personne Zazu ?",
-
-    "Tu vas très bientôt avoir ton downfall.",
-
-    "Tu es un pédophile ZAZU.",
-
-    "31 ans et 16 ans ce n'est pas NORMAL.",
-
-    "J'ai des dossiers importants sur toi.",
-
-    "Regarde bien partout quand tu sors."];
-const container=document.getElementById("container");
-const main=document.getElementById("main");
-const ghost1=document.getElementById("ghost1");
-const ghost2=document.getElementById("ghost2");
-let currentPhrase="",typedChars=[];
-
-function getRandomPhrase(){let phrase;do{phrase=phrases[Math.floor(Math.random()*phrases.length)];}while(phrase===currentPhrase&&phrases.length>1);currentPhrase=phrase;return phrase;}
-function rand(n){return Math.random()*n-n/2;}
-function chaos(c){if(c===" ") return" "; if(Math.random()<0.1){const pool="!@#$%^&*()<>?/\\[]{}+=-_~";c=pool[Math.floor(Math.random()*pool.length)];} return c;}
-function randomPosition(){const w=window.innerWidth,h=window.innerHeight;const rw=750;const lw=0; const x=lw+Math.random()*Math.max(0,w-rw-lw); const y=Math.random()*Math.max(0,h-50); container.style.left=x+'px'; container.style.top=y+'px';}
-function typePhrase(chars,i=0){if(i<chars.length){typedChars.push(chars[i]);setTimeout(()=>typePhrase(chars,i+1),10+Math.random()*10);}}
-function render(){if(typedChars.length>0){let mainOut="",ghostOut="",ghostOut2="";for(let c of typedChars){const g=chaos(c); mainOut+=`<span style="display:inline-block;transform:translate(${rand(2)}px,${rand(2)}deg) skew(${rand(5)}deg);opacity:${0.2+Math.random()*0.5};">${g}</span>`; ghostOut+=`<span style="display:inline-block;transform:translate(${rand(10)}px,${rand(5)}deg) skew(${rand(10)}deg);opacity:${0.05+Math.random()*0.3};">${g}</span>`; ghostOut2+=`<span style="display:inline-block;transform:translate(${rand(5)}px,${rand(10)}px) scale(${1+Math.random()*0.3});opacity:${0.05+Math.random()*0.25};">${g}</span>`;} main.innerHTML=mainOut; ghost1.innerHTML=ghostOut; ghost2.innerHTML=ghostOut2; container.style.transform=`translate(${rand(5)}px,${rand(5)}px) rotate(${rand(1)}deg)`;} requestAnimationFrame(render);}
-function showNewPhrase(){typedChars=[];const phrase=getRandomPhrase();const chars=phrase.split("");randomPosition();typePhrase(chars);}
-showNewPhrase(); render(); setInterval(showNewPhrase,1000+Math.random()*500);
+showNewPhrase();
+render();
+setInterval(showNewPhrase, 1000 + Math.random()*500);
 </script>
 </body>
 </html>
