@@ -37,67 +37,24 @@
 
 <script>
 (() => {
-  // --- AUDIO BOILERPLATE (robust against autoplay policies) ---
-  const bgm = document.getElementById('bgm');
-  const startBtn = document.getElementById('start-sound');
+  <body>
 
-  // Start attempt flag so we only try once per gesture
-  let audioEnabled = false;
+  <!-- Background music -->
+  <audio id="bgm" src="music.mp3" loop></audio>
+  <script>
+    window.addEventListener("click", () => {
+      const a = document.getElementById("bgm");
+      a.volume = 1.0;
+      a.play().catch(()=>{});
+    }, { once: true });
+  </script>
 
-  function tryEnableAudio(gestureSource = 'gesture') {
-    if (audioEnabled) return;
-    // try to play and unmute
-    bgm.muted = false; // unmute (it may start muted)
-    const p = bgm.play();
-    if (p !== undefined) {
-      p.then(() => {
-        audioEnabled = true;
-        console.log('bgm playing (from ' + gestureSource + ')');
-        startBtn.style.display = 'none';
-      }).catch(err => {
-        // playback was blocked — show start button as fallback
-        console.warn('bgm.play() rejected:', err);
-        startBtn.style.display = 'block';
-      });
-    } else {
-      // legacy browsers
-      audioEnabled = true;
-      startBtn.style.display = 'none';
-    }
-  }
+  <canvas id="c"></canvas>
+  
+  <script>
+  (() => {
+    // YOUR GAME CODE (unchanged)
 
-  // If user interacts anywhere, try enabling audio
-  function onUserGesture() {
-    tryEnableAudio('user-interaction');
-    removeGestureListeners();
-  }
-  function removeGestureListeners() {
-    window.removeEventListener('click', onUserGesture);
-    window.removeEventListener('touchstart', onUserGesture);
-    window.removeEventListener('keydown', onUserGesture);
-  }
-  window.addEventListener('click', onUserGesture);
-  window.addEventListener('touchstart', onUserGesture, {passive:true});
-  window.addEventListener('keydown', onUserGesture);
-
-  // Clicking the fallback button will force start audio
-  startBtn.addEventListener('click', () => {
-    // Some browsers require setting currentTime before play to consider it a gesture
-    try { bgm.currentTime = 0; } catch(e){}
-    tryEnableAudio('start-button');
-  });
-
-  // Optional: start muted autoplay attempt immediately (some browsers allow muted autoplay)
-  bgm.muted = true;
-  bgm.play().then(() => {
-    console.log('bgm started muted autoplay — will unmute on gesture');
-  }).catch(()=> {
-    // ignoring; we'll rely on user gesture
-  });
-
-  // --- END AUDIO BOILERPLATE ---
-
-  // ---------- YOUR GAME CODE (unchanged except for a tiny addition) ----------
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
   function fit() {
@@ -259,3 +216,4 @@
 </script>
 </body>
 </html>
+
