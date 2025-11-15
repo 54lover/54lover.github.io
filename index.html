@@ -1,6 +1,3 @@
-<!doctype html>
-<html lang="fr">
-<head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Pong — vs IA (Difficile)</title>
@@ -9,53 +6,23 @@
     body{display:flex;align-items:center;justify-content:center}
     canvas{position:fixed;top:0;left:0;width:100vw;height:100vh;display:flex;border:none}
     *{user-select:none;-webkit-user-select:none}
-    /* start button overlay */
-    #start-sound {
-      position:fixed;
-      right:18px;
-      bottom:18px;
-      z-index:1000;
-      background:rgba(0,0,0,0.6);
-      color:#fff;
-      border:0;
-      padding:10px 14px;
-      border-radius:8px;
-      font-size:14px;
-      cursor:pointer;
-      display:none; /* shown only when needed */
-    }
   </style>
 </head>
 <body>
-
-  <!-- Background music -->
-  <audio id="bgm" src="music.mp3" loop></audio>
-  <script>
-    window.addEventListener("click", () => {
-      const a = document.getElementById("bgm");
-      a.volume = 1.0;
-      a.play().catch(()=>{});
-    }, { once: true });
-  </script>
-
   <canvas id="c"></canvas>
-  
-  <script>
-  (() => {
-
+<script>
+(() => {
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
   function fit() {
     canvas.width = window.innerWidth * devicePixelRatio;
     canvas.height = window.innerHeight * devicePixelRatio;
     ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    // keep field sizes updated when resizing
-    fieldW = window.innerWidth;
-    fieldH = window.innerHeight;
   }
   window.addEventListener('resize', fit);
   fit();
 
+  const paddleW = 12, paddleH = 90, ballR = 18;
   const paddleW = 12, paddleH = 90, ballR = 40;
   let fieldW = window.innerWidth, fieldH = window.innerHeight;
 
@@ -64,6 +31,7 @@
 
   const bgImg = new Image();
   bgImg.src = 'bg.png'; // your background file
+
 
   const particles = [];
 
@@ -80,111 +48,6 @@
   function pointerY(e){return e.clientY !== undefined ? e.clientY : e.touches[0].clientY;}
   canvas.addEventListener('mousemove', e=> mouseY = pointerY(e));
   canvas.addEventListener('touchmove', e=>{ e.preventDefault(); mouseY = pointerY(e); }, {passive:false});
-  canvas.addEventListener('click', ()=>{ if(!state.running) spawnBall(Math.random()>0.5); state.running = true; });
-
-  function spawnBall(dir=true){
-    state.ball.x = fieldW/2;
-    state.ball.y = fieldH/2;
-    const speed = 450;
-    state.ball.vx = (dir?1:-1)*speed;
-    state.ball.vy = speed*(Math.random()*0.5 - 0.25);
-  }
-
-  function updateAI(dt){
-    const target = state.ball.y - paddleH/2;
-    const maxSpeed = 500;
-    const dy = target - state.ai.y;
-    state.ai.y += Math.sign(dy) * Math.min(Math.abs(dy), maxSpeed*dt);
-    state.ai.y = Math.max(0, Math.min(fieldH - paddleH, state.ai.y));
-  }
-
-  function step(dt){
-    for(let i=particles.length-1;i>=0;i--){
-      const part = particles[i];
-      part.x += part.vx * dt;
-      part.y += part.vy * dt;
-      part.life -= dt;
-      if(part.life <= 0) particles.splice(i,1);
-    }
-
-    if(!state.running) return;
-
-    state.player.y = Math.max(0, Math.min(fieldH - paddleH, mouseY - paddleH/2));
-
-    updateAI(dt);
-
-    state.ball.x += state.ball.vx * dt;
-    state.ball.y += state.ball.vy * dt;
-
-    if(state.ball.y - ballR < 0 || state.ball.y + ballR > fieldH) state.ball.vy *= -1;
-
-    if(state.ball.x - ballR < state.player.x + paddleW){
-      if(state.ball.y > state.player.y && state.ball.y < state.player.y + paddleH) bouncePlayer(true);
-      else if(state.ball.x < 0) score(false);
-    }
-    if(state.ball.x + ballR > state.ai.x){
-      if(state.ball.y > state.ai.y && state.ball.y < state.ai.y + paddleH) bouncePlayer(false);
-      else if(state.ball.x > fieldW) score(true);
-    }
-  }
-
-  function bouncePlayer(playerSide){
-    for(let i=0;i<12;i++){
-      particles.push({ x: state.ball.x, y: state.ball.y, vx: (Math.random()*200-100), vy: (Math.random()*200-100), life: 0.4 });
-    }
-    const paddle = playerSide ? state.player : state.ai;
-    const impact = (state.ball.y - (paddle.y + paddleH/2)) / (paddleH/2);
-    const speed = Math.hypot(state.ball.vx, state.ball.vy) * 1.05;
-    const angle = impact * 0.7;
-    state.ball.vx = (playerSide?1:-1) * Math.abs(speed * Math.cos(angle));
-    state.ball.vy = speed * Math.sin(angle);
-  }
-
-  function score(playerWins){
-    if(playerWins) state.playerScore++; else state.aiScore++;
-    spawnBall(!playerWins);
-    state.running = false;
-  }
-
-  function draw(){
-    if (bgImg.complete) {
-      ctx.drawImage(bgImg, 0, 0, fieldW, fieldH);
-    } else {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0,0,fieldW,fieldH);
-    }
-
-    for(const part of particles){
-      ctx.fillStyle = 'rgba(200,0,0,'+(part.life/0.4)+')';
-      ctx.beginPath();
-      ctx.arc(part.x, part.y, 5, 0, Math.PI*2);
-      ctx.fill();
-    }
-
-    ctx.fillStyle = '#fff';
-    fillRoundRect(state.player.x, state.player.y, paddleW, paddleH, 6);
-    fillRoundRect(state.ai.x, state.ai.y, paddleW, paddleH, 6);
-
-    if(ballImg.complete)
-      ctx.drawImage(ballImg, state.ball.x - ballR, state.ball.y - ballR, ballR*2, ballR*2);
-    else {
-      ctx.beginPath();
-      ctx.arc(state.ball.x, state.ball.y, ballR, 0, Math.PI*2);
-      ctx.fill();
-    }
-
-    ctx.font = '40px Arial';
-    ctx.textAlign='center';
-    ctx.fillText(state.playerScore, fieldW/2 - 50, 60);
-    ctx.fillText(state.aiScore, fieldW/2 + 50, 60);
-  }
-
-  function fillRoundRect(x,y,w,h,r){
-    ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.fill();
-  }
-
-  function loop(ts){
-    if(!state.lastTime) state.lastTime = ts;
     const dt = Math.min(1/30, (ts-state.lastTime)/1000);
     step(dt);
     draw();
@@ -194,15 +57,7 @@
 
   spawnBall();
   requestAnimationFrame(loop);
-
-  // --- Debug helper: show start button if audio still not enabled after 2s ---
-  setTimeout(() => {
-    if (!audioEnabled) startBtn.style.display = 'block';
-  }, 2000);
-
 })();
 </script>
 </body>
 </html>
-
-
