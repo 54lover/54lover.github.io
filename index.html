@@ -13,7 +13,14 @@
 </head>
 <body>
   <canvas id="c"></canvas>
-  <audio src="MeetTheZazu.mp3" autoplay loop></audio>
+  <audio id="bgm" autoplay loop muted>
+  <source src="MeetTheZazu.mp3" type="audio/mpeg">
+</audio>
+
+<button onclick="document.getElementById('bgm').muted = false;">
+  Enable Sound
+</button>
+
 <script>
 (() => {
   const canvas = document.getElementById('c');
@@ -170,6 +177,7 @@
 </script>
 </body>
 </html>
+
 
 
 
