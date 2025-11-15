@@ -12,7 +12,24 @@
   </style>
 </head>
 <body>
+  <audio id="bgm" src="MeetTheZazu.mp3" loop></audio>
   <canvas id="c"></canvas>
+  <script>
+  const bgm = document.getElementById("bgm");
+
+  // Autoplay sera bloqué tant que l'utilisateur n'a pas interagi
+  function startMusic() {
+    bgm.volume = 0.5; // volume confortable
+    bgm.play().catch(()=>{});
+    window.removeEventListener('click', startMusic);
+    window.removeEventListener('touchstart', startMusic);
+  }
+
+  // Premier clic → on lance la musique
+  window.addEventListener('click', startMusic);
+  window.addEventListener('touchstart', startMusic);
+</script>
+
 <script>
 (() => {
   const canvas = document.getElementById('c');
@@ -169,3 +186,4 @@
 </script>
 </body>
 </html>
+
