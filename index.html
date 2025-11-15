@@ -117,7 +117,7 @@ gameArea.addEventListener('click', (e) => {
         const blood = document.createElement('div');
         blood.className = 'blood';
         blood.style.left = (x - 100) + 'px'; // center
-        blood.style.top = (y - 130) + 'px';
+        blood.style.top = (y - 200) + 'px';
         gameArea.appendChild(blood);
     }
 });
@@ -199,6 +199,7 @@ setInterval(showNewPhrase, 1000 + Math.random()*500);
 </script>
 </body>
 </html>
+
 
 
 
