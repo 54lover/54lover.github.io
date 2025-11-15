@@ -27,17 +27,6 @@
   </style>
 </head>
 <body>
-  <!-- hidden audio element (preload + playsinline) -->
-  <audio id="bgm" src="music.mp3" preload="auto" loop playsinline></audio>
-
-  <!-- Visible fallback button shown if autoplay fails -->
-  <button id="start-sound">Start Sound</button>
-
-  <canvas id="c"></canvas>
-
-<script>
-(() => {
-  <body>
 
   <!-- Background music -->
   <audio id="bgm" src="music.mp3" loop></audio>
@@ -53,7 +42,6 @@
   
   <script>
   (() => {
-    // YOUR GAME CODE (unchanged)
 
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
@@ -216,4 +204,5 @@
 </script>
 </body>
 </html>
+
 
