@@ -3,47 +3,62 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Pong — vs IA (Difficile)</title>
+  <title>Pong — vs IA (Difficile) + Glitch Text</title>
   <style>
     html,body{height:100%;margin:0}
-    body{display:flex;align-items:center;justify-content:center}
-    canvas{position:fixed;top:0;left:0;width:100vw;height:100vh;display:flex;border:none}
+    body{display:flex;align-items:center;justify-content:center;overflow:hidden;background:#000;font-family:monospace;}
+    canvas{position:fixed;top:0;left:0;width:100vw;height:100vh;border:none;pointer-events:none;}
     *{user-select:none;-webkit-user-select:none}
+
+    /* Glitch Text Styles */
+    .fracture-container {
+      position:absolute;
+      font-size:2rem;
+      white-space:pre;
+      pointer-events:none;
+      z-index:2;
+    }
+    .layer {
+      position:absolute;
+      top:0;
+      left:0;
+      pointer-events:none;
+    }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
   <audio id="bgm" src="MeetTheZazu.mp3" loop autoplay></audio>
-<script>
-const bgm = document.getElementById("bgm");
 
+  <!-- Glitch Text Container -->
+  <div id="container" class="fracture-container">
+    <div id="main" class="layer" style="color:white;"></div>
+    <div id="ghost1" class="layer" style="color:rgba(255,0,80,0.4);"></div>
+    <div id="ghost2" class="layer" style="color:rgba(0,180,255,0.35);"></div>
+  </div>
+
+<script>
+/* --- Background Music Handling --- */
+const bgm = document.getElementById("bgm");
 function startMusic() {
   bgm.volume = 0.5;
-  bgm.play().then(() => {
-      console.log("Musique lancée !");
-  }).catch(err => {
-      console.log("Autoplay bloqué :", err);
-  });
-
-  // On enlève les listeners après le premier clic
+  bgm.play().catch(err => console.log("Autoplay bloqué :", err));
   window.removeEventListener('click', startMusic);
   window.removeEventListener('touchstart', startMusic);
   window.removeEventListener('touchend', startMusic);
 }
-
-// ⚠️ Le clic doit être SUR LA PAGE, pas sur le canvas uniquement
 window.addEventListener('click', startMusic);
-window.addEventListener('touchstart', startMusic, {passive:true});
-window.addEventListener('touchend', startMusic, {passive:true});
-</script>
-<script>
+window.addEventListener('touchstart', startMusic,{passive:true});
+window.addEventListener('touchend', startMusic,{passive:true});
+
+/* --- Canvas Pong Setup --- */
 (() => {
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
   function fit() {
     canvas.width = window.innerWidth * devicePixelRatio;
     canvas.height = window.innerHeight * devicePixelRatio;
-    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
   }
   window.addEventListener('resize', fit);
   fit();
@@ -51,66 +66,53 @@ window.addEventListener('touchend', startMusic, {passive:true});
   const paddleW = 12, paddleH = 90, ballR = 25;
   let fieldW = window.innerWidth, fieldH = window.innerHeight;
 
-  const ballImg = new Image();
-  ballImg.src = 'zazu.png';
-
-  const bgImg = new Image();
-  bgImg.src = 'bg.png'; // your background file
-
+  const ballImg = new Image(); ballImg.src='zazu.png';
+  const bgImg = new Image();   bgImg.src='bg.png';
 
   const particles = [];
-
   const state = {
     player:{x:30,y:fieldH/2 - paddleH/2},
     ai:{x:fieldW - 30 - paddleW,y:fieldH/2 - paddleH/2},
     ball:{x:fieldW/2,y:fieldH/2,vx:400*(Math.random()>0.5?1:-1),vy:300*(Math.random()>0.5?1:-1)},
     playerScore:0,aiScore:0,running:true,lastTime:null
   };
-
-  const DIFFICULTY = 0.55;
+  const DIFFICULTY=0.55;
   let mouseY = fieldH/2;
 
-  function pointerY(e){return e.clientY !== undefined ? e.clientY : e.touches[0].clientY;}
+  function pointerY(e){return e.clientY!==undefined?e.clientY:e.touches[0].clientY;}
   canvas.addEventListener('mousemove', e=> mouseY = pointerY(e));
-  canvas.addEventListener('touchmove', e=>{ e.preventDefault(); mouseY = pointerY(e); }, {passive:false});
-  canvas.addEventListener('click', ()=>{ if(!state.running) spawnBall(Math.random()>0.5); state.running = true; });
+  canvas.addEventListener('touchmove', e=>{e.preventDefault();mouseY=pointerY(e);},{passive:false});
+  canvas.addEventListener('click', ()=>{if(!state.running) spawnBall(Math.random()>0.5); state.running=true;});
 
   function spawnBall(dir=true){
-    state.ball.x = fieldW/2;
-    state.ball.y = fieldH/2;
-    const speed = 450;
-    state.ball.vx = (dir?1:-1)*speed;
-    state.ball.vy = speed*(Math.random()*0.5 - 0.25);
+    state.ball.x=fieldW/2; state.ball.y=fieldH/2;
+    const speed=450;
+    state.ball.vx=(dir?1:-1)*speed;
+    state.ball.vy=speed*(Math.random()*0.5 -0.25);
   }
 
   function updateAI(dt){
     const target = state.ball.y - paddleH/2;
-    const maxSpeed = 500;
+    const maxSpeed=500;
     const dy = target - state.ai.y;
-    state.ai.y += Math.sign(dy) * Math.min(Math.abs(dy), maxSpeed*dt);
-    state.ai.y = Math.max(0, Math.min(fieldH - paddleH, state.ai.y));
+    state.ai.y += Math.sign(dy)*Math.min(Math.abs(dy), maxSpeed*dt);
+    state.ai.y = Math.max(0,Math.min(fieldH - paddleH,state.ai.y));
   }
 
   function step(dt){
     for(let i=particles.length-1;i>=0;i--){
       const part = particles[i];
-      part.x += part.vx * dt;
-      part.y += part.vy * dt;
+      part.x += part.vx*dt;
+      part.y += part.vy*dt;
       part.life -= dt;
-      if(part.life <= 0) particles.splice(i,1);
+      if(part.life<=0) particles.splice(i,1);
     }
-
     if(!state.running) return;
-
     state.player.y = Math.max(0, Math.min(fieldH - paddleH, mouseY - paddleH/2));
-
     updateAI(dt);
-
-    state.ball.x += state.ball.vx * dt;
-    state.ball.y += state.ball.vy * dt;
-
-    if(state.ball.y - ballR < 0 || state.ball.y + ballR > fieldH) state.ball.vy *= -1;
-
+    state.ball.x += state.ball.vx*dt;
+    state.ball.y += state.ball.vy*dt;
+    if(state.ball.y - ballR < 0 || state.ball.y + ballR > fieldH) state.ball.vy*=-1;
     if(state.ball.x - ballR < state.player.x + paddleW){
       if(state.ball.y > state.player.y && state.ball.y < state.player.y + paddleH) bouncePlayer(true);
       else if(state.ball.x < 0) score(false);
@@ -122,78 +124,95 @@ window.addEventListener('touchend', startMusic, {passive:true});
   }
 
   function bouncePlayer(playerSide){
-    for(let i=0;i<12;i++){
-      particles.push({ x: state.ball.x, y: state.ball.y, vx: (Math.random()*200-100), vy: (Math.random()*200-100), life: 0.4 });
-    }
-    const paddle = playerSide ? state.player : state.ai;
-    const impact = (state.ball.y - (paddle.y + paddleH/2)) / (paddleH/2);
-    const speed = Math.hypot(state.ball.vx, state.ball.vy) * 1.05;
-    const angle = impact * 0.7;
-    state.ball.vx = (playerSide?1:-1) * Math.abs(speed * Math.cos(angle));
-    state.ball.vy = speed * Math.sin(angle);
+    for(let i=0;i<12;i++){particles.push({x:state.ball.x,y:state.ball.y,vx:(Math.random()*200-100),vy:(Math.random()*200-100),life:0.4});}
+    const paddle = playerSide?state.player:state.ai;
+    const impact = (state.ball.y - (paddle.y+paddleH/2))/(paddleH/2);
+    const speed = Math.hypot(state.ball.vx,state.ball.vy)*1.05;
+    const angle = impact*0.7;
+    state.ball.vx = (playerSide?1:-1)*Math.abs(speed*Math.cos(angle));
+    state.ball.vy = speed*Math.sin(angle);
   }
 
   function score(playerWins){
     if(playerWins) state.playerScore++; else state.aiScore++;
-    spawnBall(!playerWins);
-    state.running = false;
+    spawnBall(!playerWins); state.running=false;
   }
 
   function draw(){
-    if (bgImg.complete) {
-      ctx.drawImage(bgImg, 0, 0, fieldW, fieldH);
-    } else {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0,0,fieldW,fieldH);
-    }
-
-    for(const part of particles){ 
-      ctx.fillStyle = 'rgba(200,0,0,'+(part.life/0.4)+')';
-      ctx.beginPath(); 
-      ctx.arc(part.x, part.y, 5, 0, Math.PI*2); 
-      ctx.fill(); 
-    }
-
-    ctx.fillStyle = '#fff';
-    fillRoundRect(state.player.x, state.player.y, paddleW, paddleH, 6);
-    fillRoundRect(state.ai.x, state.ai.y, paddleW, paddleH, 6);
-
-    if(ballImg.complete)
-      ctx.drawImage(ballImg, state.ball.x - ballR, state.ball.y - ballR, ballR*2, ballR*2);
-    else {
-      ctx.beginPath();
-      ctx.arc(state.ball.x, state.ball.y, ballR, 0, Math.PI*2);
-      ctx.fill();
-    }
-
-    ctx.font = '40px Arial';
-    ctx.textAlign='center';
-    ctx.fillText(state.playerScore, fieldW/2 - 50, 60);
-    ctx.fillText(state.aiScore, fieldW/2 + 50, 60);
+    if(bgImg.complete) ctx.drawImage(bgImg,0,0,fieldW,fieldH);
+    else {ctx.fillStyle='#000';ctx.fillRect(0,0,fieldW,fieldH);}
+    for(const part of particles){ctx.fillStyle='rgba(200,0,0,'+(part.life/0.4)+')';ctx.beginPath();ctx.arc(part.x,part.y,5,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle='#fff';
+    fillRoundRect(state.player.x,state.player.y,paddleW,paddleH,6);
+    fillRoundRect(state.ai.x,state.ai.y,paddleW,paddleH,6);
+    if(ballImg.complete) ctx.drawImage(ballImg,state.ball.x-ballR,state.ball.y-ballR,ballR*2,ballR*2);
+    else{ctx.beginPath();ctx.arc(state.ball.x,state.ball.y,ballR,0,Math.PI*2);ctx.fill();}
+    ctx.font='40px Arial'; ctx.textAlign='center';
+    ctx.fillText(state.playerScore,fieldW/2-50,60);
+    ctx.fillText(state.aiScore,fieldW/2+50,60);
   }
 
+  function fillRoundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.fill();}
 
-  function fillRoundRect(x,y,w,h,r){
-    ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.fill();
-  }
-
-  function loop(ts){
-    if(!state.lastTime) state.lastTime = ts;
-    const dt = Math.min(1/30, (ts-state.lastTime)/1000);
-    step(dt);
-    draw();
-    state.lastTime = ts;
-    requestAnimationFrame(loop);
-  }
-
-  spawnBall();
-  requestAnimationFrame(loop);
+  function loop(ts){if(!state.lastTime) state.lastTime=ts;const dt=Math.min(1/30,(ts-state.lastTime)/1000);step(dt);draw();state.lastTime=ts;requestAnimationFrame(loop);}
+  spawnBall(); requestAnimationFrame(loop);
 })();
+
+/* --- Glitch Text Logic --- */
+const phrases = [
+
+    "Fais gaffe à tes meufs.",
+
+    "7 Rue des Lions ,77400 Lagny-sur-Marne.",
+
+    "Ton heure arrive, regarde bien la date.",
+    
+    "ip_adress : b51f:d68e:5b2b:b8d5:e4f9:7c07:06ad:5953",
+        
+    "90.121.23.167",
+
+    "Tu crois être une bonne personne Zazu ?",
+
+    "Tu vas très bientôt avoir ton downfall.",
+
+    "Tu es un pédophile ZAZU.",
+
+    "31 ans et 16 ans ce n'est pas NORMAL.",
+
+    "J'ai des dossiers importants sur toi.",
+
+    "Regarde bien partout quand tu sors."];
+const container = document.getElementById("container");
+const main = document.getElementById("main");
+const ghost1 = document.getElementById("ghost1");
+const ghost2 = document.getElementById("ghost2");
+
+let currentPhrase=""; let typedChars=[];
+
+function getRandomPhrase(){let phrase;do{phrase=phrases[Math.floor(Math.random()*phrases.length)];}while(phrase===currentPhrase&&phrases.length>1);currentPhrase=phrase;return phrase;}
+function rand(n){return Math.random()*n-n/2;}
+function chaos(c){if(c===" ")return" ";if(Math.random()<0.1){const pool="!@#$%^&*()<>?/\\[]{}+=-_~";c=pool[Math.floor(Math.random()*pool.length)];}return c;}
+function randomPosition(){
+  const containerWidth = container.offsetWidth;
+  const containerHeight = container.offsetHeight;
+  const rightMargin = 750; const leftMargin=0;
+  const maxX = window.innerWidth - containerWidth - rightMargin;
+  const x = leftMargin + Math.random()*Math.max(0,maxX-leftMargin);
+  const maxY = window.innerHeight - containerHeight;
+  const y = Math.random()*Math.max(0,maxY);
+  container.style.left=`${x}px`; container.style.top=`${y}px`;
+}
+function typePhrase(chars,index=0){if(index<chars.length){typedChars.push(chars[index]);setTimeout(()=>typePhrase(chars,index+1),10+Math.random()*10);}}
+function render(){if(typedChars.length>0){let mainOut="",ghostOut="",ghostOut2="";for(let c of typedChars){const glitched=chaos(c);
+mainOut+=`<span style="display:inline-block; transform:translate(${rand(2)}px,${rand(2)}px) skew(${rand(5)}deg); opacity:${0.2+Math.random()*0.5};">${glitched}</span>`;
+ghostOut+=`<span style="display:inline-block; transform:translate(${rand(10)}px,${rand(5)}px) skew(${rand(10)}deg); opacity:${0.05+Math.random()*0.3};">${glitched}</span>`;
+ghostOut2+=`<span style="display:inline-block; transform:translate(${rand(5)}px,${rand(10)}px) scale(${1+Math.random()*0.3}); opacity:${0.05+Math.random()*0.25};">${glitched}</span>`;}
+main.innerHTML=mainOut;ghost1.innerHTML=ghostOut;ghost2.innerHTML=ghostOut2;
+container.style.transform=`translate(${rand(5)}px,${rand(5)}px) rotate(${rand(1)}deg)`;}
+requestAnimationFrame(render);}
+function showNewPhrase(){typedChars=[];const phrase=getRandomPhrase();const chars=phrase.split("");randomPosition();typePhrase(chars);}
+showNewPhrase();render();
+setInterval(showNewPhrase,4000+Math.random()*2000);
 </script>
 </body>
 </html>
-
-
-
-
-
