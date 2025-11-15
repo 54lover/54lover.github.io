@@ -17,6 +17,9 @@
 
 <script>
 (() => {
+  window.addEventListener("click", () => {
+    document.getElementById("bgm").muted = false;
+  });
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
   function fit() {
@@ -171,6 +174,7 @@
 </script>
 </body>
 </html>
+
 
 
 
