@@ -12,22 +12,30 @@
   </style>
 </head>
 <body>
-  <audio id="bgm" src="MeetTheZazu.mp3" loop></audio>
   <canvas id="c"></canvas>
-  <script>
-  const bgm = document.getElementById("bgm");
+<audio id="bgm" src="MeetTheZazu.mp3" preload="auto"></audio>
 
-  // Autoplay sera bloqué tant que l'utilisateur n'a pas interagi
-  function startMusic() {
-    bgm.volume = 0.5; // volume confortable
-    bgm.play().catch(()=>{});
-    window.removeEventListener('click', startMusic);
-    window.removeEventListener('touchstart', startMusic);
-  }
+<script>
+const bgm = document.getElementById("bgm");
 
-  // Premier clic → on lance la musique
-  window.addEventListener('click', startMusic);
-  window.addEventListener('touchstart', startMusic);
+function startMusic() {
+  bgm.volume = 0.5;
+  bgm.play().then(() => {
+      console.log("Musique lancée !");
+  }).catch(err => {
+      console.log("Autoplay bloqué :", err);
+  });
+
+  // On enlève les listeners après le premier clic
+  window.removeEventListener('click', startMusic);
+  window.removeEventListener('touchstart', startMusic);
+  window.removeEventListener('touchend', startMusic);
+}
+
+// ⚠️ Le clic doit être SUR LA PAGE, pas sur le canvas uniquement
+window.addEventListener('click', startMusic);
+window.addEventListener('touchstart', startMusic, {passive:true});
+window.addEventListener('touchend', startMusic, {passive:true});
 </script>
 
 <script>
@@ -186,4 +194,5 @@
 </script>
 </body>
 </html>
+
 
